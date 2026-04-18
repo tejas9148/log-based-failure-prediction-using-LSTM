@@ -1,0 +1,8 @@
+{
+  "dataset_type": "HDFS_Event_traces",
+  "sequence_length": 5,
+  "step_size": 1,
+  "decision_threshold": 0.44551998376846313,
+  "model_path": "C:\\Users\\tejas\\Documents\\minorproject 6sem\\minorproject\\log_failure_prediction\\project\\saved_models\\lstm_failure_predictor.keras",
+  "encoder_path": "C:\\Users\\tejas\\Documents\\minorproject 6sem\\minorproject\\log_failure_prediction\\project\\saved_models\\label_encoder.joblib"
+}

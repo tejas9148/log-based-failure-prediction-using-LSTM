@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Failure Prediction</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Log Failure Prediction using LSTM</p>
+        <h1>Paste raw logs, map them to EventIds, and predict failures in one flow.</h1>
+        <p class="subtitle">
+          The system parses each log line, matches it to an HDFS template, builds the last {{ sequence_length }}
+          EventIds, and sends the sequence to the trained LSTM model.
+        </p>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-label">Model focus</div>
+        <div class="hero-card-value">Sequence-based anomaly detection</div>
+        <ul>
+          <li>Template ID mapping from raw logs</li>
+          <li>Unknown event detection</li>
+          <li>Threshold-tuned prediction</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="grid two-col">
+      <article class="panel">
+        <h2>Input Logs</h2>
+        <form method="post">
+          <label for="raw_logs">Paste one log per line</label>
+          <textarea id="raw_logs" name="raw_logs" placeholder="Paste actual HDFS logs here...">{{ raw_logs }}</textarea>
+          <div class="actions">
+            <button type="submit">Process and Predict</button>
+            <a class="secondary" href="#examples">See example</a>
+          </div>
+        </form>
+      </article>
+
+      <article class="panel info-panel">
+        <h2>What Happens</h2>
+        <div class="steps">
+          <div class="step"><span>1</span><p>Read raw log lines from the browser form.</p></div>
+          <div class="step"><span>2</span><p>Match each line to the closest HDFS template.</p></div>
+          <div class="step"><span>3</span><p>Convert matches into EventId sequence.</p></div>
+          <div class="step"><span>4</span><p>Predict failure/anomaly using the trained LSTM.</p></div>
+        </div>
+      </article>
+    </section>
+
+    {% if error_message %}
+    <section class="alert error">{{ error_message }}</section>
+    {% endif %}
+
+    {% if success_message %}
+    <section class="alert success">{{ success_message }}</section>
+    {% endif %}
+
+    {% if prediction_data %}
+    <section class="grid two-col result-grid">
+      <article class="panel result-panel">
+        <h2>Prediction Result</h2>
+        <div class="metrics">
+          <div><span>Anomaly Probability</span><strong>{{ '%.4f'|format(prediction_data.anomaly_probability) }}</strong></div>
+          <div><span>Decision Threshold</span><strong>{{ '%.4f'|format(prediction_data.decision_threshold) }}</strong></div>
+          <div><span>Final Prediction</span><strong class="prediction {% if prediction_data.predicted_failure %}bad{% else %}good{% endif %}">{% if prediction_data.predicted_failure %}Failure / Anomaly{% else %}Normal / Success{% endif %}</strong></div>
+        </div>
+        {% if prediction_data.unknown_event_ids %}
+        <div class="unknown-box">
+          <h3>Unknown EventIds</h3>
+          <p>{{ prediction_data.unknown_event_ids }}</p>
+        </div>
+        {% endif %}
+      </article>
+
+      <article class="panel">
+        <h2>Used EventId Sequence</h2>
+        <div class="sequence">{{ prediction_data.input_sequence }}</div>
+        <p class="hint">Only the last {{ sequence_length }} matched EventIds are used for prediction.</p>
+      </article>
+    </section>
+    {% endif %}
+
+    <section class="panel" id="examples">
+      <h2>Sample Logs to Try</h2>
+      <pre>INFO Received block blk_120 src: /10.250.19.102:54106 dest: /10.250.19.102:50010 of size 67108864
+INFO PacketResponder 1 for block blk_120 terminating
+INFO BLOCK* NameSystem.allocateBlock: /user/root/rand/_temporary/_task_200811111030_0001_m_000145_0/part-00145. blk_12345
+INFO BLOCK* ask 10.251.111.130:50010 to replicate blk_12345 to datanode(s) 10.250.10.10:50010</pre>
+    </section>
+
+    {% if mapping_rows %}
+    <section class="panel">
+      <h2>Template Mapping</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Line</th>
+              <th>Raw Log</th>
+              <th>EventId</th>
+              <th>Matched Template</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in mapping_rows %}
+            <tr>
+              <td>{{ row.line_no }}</td>
+              <td>{{ row.raw_line }}</td>
+              <td><span class="pill">{{ row.event_id }}</span></td>
+              <td>{{ row.template }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>

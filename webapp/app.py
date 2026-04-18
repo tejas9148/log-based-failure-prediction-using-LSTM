@@ -14,10 +14,18 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from project.prediction.predictor import predict_failure
-from project.prediction.template_matcher import MatchResult, TemplateMatcher, parse_logs
+from project.prediction.template_matcher import (
+    MatchResult,
+    TemplateMatcher,
+    find_event_line_numbers,
+    parse_logs,
+)
+from project.evaluation.visualizations import plot_event_transition_comparison
 
 
 CONFIG_PATH = BASE_DIR / "config.json"
+DATASET_NPZ_PATH = PROJECT_ROOT / "dataset" / "HDFS.npz"
+TRANSITION_IMAGE_PATH = BASE_DIR / "webapp" / "static" / "event_transition_comparison.png"
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 matcher = TemplateMatcher()
@@ -30,9 +38,23 @@ def _load_sequence_length() -> int:
     return int(data["sequence_length"])
 
 
+def _ensure_transition_plot() -> str | None:
+    """Generate comparison graph once and return static URL path if available."""
+    try:
+        if not TRANSITION_IMAGE_PATH.exists():
+            plot_event_transition_comparison(
+                npz_path=DATASET_NPZ_PATH,
+                output_path=TRANSITION_IMAGE_PATH,
+            )
+        return "event_transition_comparison.png"
+    except Exception:
+        return None
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     sequence_length = _load_sequence_length()
+    transition_plot = _ensure_transition_plot()
     raw_logs = ""
     mapping_rows = []
     prediction_data = None
@@ -75,6 +97,12 @@ def index():
                 sequence = event_ids[-sequence_length:]
                 try:
                     prediction_data = predict_failure(sequence)
+                    root_event = prediction_data.get("root_cause_event")
+                    if root_event:
+                        prediction_data["root_cause_line_numbers"] = find_event_line_numbers(
+                            mapping_rows=mapping_rows,
+                            event_id=str(root_event),
+                        )
                     success_message = "Prediction completed successfully."
                 except Exception as exc:
                     error_message = str(exc)
@@ -84,6 +112,7 @@ def index():
         raw_logs=raw_logs,
         mapping_rows=mapping_rows,
         prediction_data=prediction_data,
+        transition_plot=transition_plot,
         sequence_length=sequence_length,
         error_message=error_message,
         success_message=success_message,

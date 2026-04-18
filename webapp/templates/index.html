@@ -23,7 +23,8 @@
         <ul>
           <li>Template ID mapping from raw logs</li>
           <li>Unknown event detection</li>
-          <li>Threshold-tuned prediction</li>
+          <li>Alert severity classification</li>
+          <li>Root cause event hint</li>
         </ul>
       </div>
     </section>
@@ -67,8 +68,19 @@
         <div class="metrics">
           <div><span>Anomaly Probability</span><strong>{{ '%.4f'|format(prediction_data.anomaly_probability) }}</strong></div>
           <div><span>Decision Threshold</span><strong>{{ '%.4f'|format(prediction_data.decision_threshold) }}</strong></div>
+          <div><span>Alert Level</span><strong>{{ prediction_data.alert_level }}</strong></div>
           <div><span>Final Prediction</span><strong class="prediction {% if prediction_data.predicted_failure %}bad{% else %}good{% endif %}">{% if prediction_data.predicted_failure %}Failure / Anomaly{% else %}Normal / Success{% endif %}</strong></div>
         </div>
+        {% if prediction_data.root_cause_event %}
+        <div class="unknown-box">
+          <h3>Root Cause Event</h3>
+          <p><strong>{{ prediction_data.root_cause_event }}</strong></p>
+          <p>{{ prediction_data.root_cause_explanation }}</p>
+          {% if prediction_data.root_cause_line_numbers %}
+          <p>Matched input lines: {{ prediction_data.root_cause_line_numbers }}</p>
+          {% endif %}
+        </div>
+        {% endif %}
         {% if prediction_data.unknown_event_ids %}
         <div class="unknown-box">
           <h3>Unknown EventIds</h3>
@@ -82,6 +94,14 @@
         <div class="sequence">{{ prediction_data.input_sequence }}</div>
         <p class="hint">Only the last {{ sequence_length }} matched EventIds are used for prediction.</p>
       </article>
+    </section>
+    {% endif %}
+
+    {% if transition_plot %}
+    <section class="panel">
+      <h2>Event Transition Patterns</h2>
+      <p class="hint">Anomaly transitions are highlighted in red to compare against normal flow behavior.</p>
+      <img src="{{ url_for('static', filename=transition_plot) }}" alt="Normal vs anomaly event transition graph" style="width:100%; border-radius: 12px; border: 1px solid #d8d8d8;">
     </section>
     {% endif %}
 

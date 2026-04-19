@@ -101,6 +101,17 @@ def _find_best_threshold(y_true: np.ndarray, y_prob: np.ndarray, target_precisio
 
 def _save_config(sequence_length: int, step_size: int, threshold: float) -> None:
     """Persist config used by prediction system and demo."""
+    existing: Dict[str, object] = {}
+    if CONFIG_PATH.exists():
+        try:
+            existing = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            existing = {}
+
+    self_learning = existing.get("self_learning", {})
+    if not isinstance(self_learning, dict):
+        self_learning = {}
+
     payload = {
         "dataset_type": "HDFS_Event_traces",
         "sequence_length": sequence_length,
@@ -108,6 +119,15 @@ def _save_config(sequence_length: int, step_size: int, threshold: float) -> None
         "decision_threshold": threshold,
         "model_path": str(MODEL_PATH),
         "encoder_path": str(ENCODER_PATH),
+        "self_learning": {
+            "enabled": bool(self_learning.get("enabled", True)),
+            "online_dataset_path": str(self_learning.get("online_dataset_path", BASE_DIR / "online_dataset.csv")),
+            "state_path": str(self_learning.get("state_path", BASE_DIR / "saved_models" / "self_learning_state.json")),
+            "retrain_threshold": int(self_learning.get("retrain_threshold", 500)),
+            "retrain_interval_seconds": int(self_learning.get("retrain_interval_seconds", 600)),
+            "epochs": int(self_learning.get("epochs", 3)),
+            "batch_size": int(self_learning.get("batch_size", 64)),
+        },
     }
     CONFIG_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 

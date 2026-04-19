@@ -67,6 +67,22 @@ def parse_logs(raw_text: str) -> list[str]:
     return [line.strip() for line in raw_text.splitlines() if line.strip()]
 
 
+def map_lines_to_event_ids(lines: list[str], matcher: TemplateMatcher | None = None) -> list[str]:
+    """Map raw log lines to EventIds and skip non-matching lines."""
+    active_matcher = matcher or TemplateMatcher()
+    event_ids: list[str] = []
+    for line in lines:
+        matched = active_matcher.match(line)
+        if matched is not None:
+            event_ids.append(matched.event_id)
+    return event_ids
+
+
+def map_logs_to_event_ids(raw_text: str, matcher: TemplateMatcher | None = None) -> list[str]:
+    """Parse multiline raw logs and return matched EventIds."""
+    return map_lines_to_event_ids(parse_logs(raw_text), matcher=matcher)
+
+
 def find_event_line_numbers(mapping_rows: list[dict[str, Any]], event_id: str) -> list[int]:
     """Return all original input line numbers that map to the target EventId."""
     return [int(row["line_no"]) for row in mapping_rows if str(row.get("event_id")) == event_id]

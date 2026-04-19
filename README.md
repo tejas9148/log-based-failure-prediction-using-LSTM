@@ -9,6 +9,8 @@ The pipeline supports:
 - root-cause event identification,
 - confidence-based alert levels,
 - normal vs anomaly transition visualization,
+- online sequence collection from live predictions,
+- trigger-based self-learning retraining,
 - prediction through CLI, desktop app, Streamlit, and Flask web app.
 
 ## 1. Project Objective
@@ -175,7 +177,52 @@ Web app capabilities:
 - root-cause line mapping,
 - transition visualization panel.
 
-## 8. Input and Output Format
+### Real-Time Monitor (Self-Learning Enabled)
+
+```powershell
+python -m project.prediction.realtime_monitor <path_to_live_log_file>
+```
+
+This monitor:
+- maps each incoming log line to an EventId via `template_matcher.py`,
+- builds a sliding window sequence,
+- predicts anomaly status,
+- appends each sequence to `project/online_dataset.csv`,
+- triggers automatic retraining when self-learning rules are met.
+
+## 8. Self-Learning Module
+
+New module:
+- `project/self_learning.py`
+
+Online dataset file:
+- `project/online_dataset.csv`
+
+Stored format:
+- `Event1,Event2,Event3,Event4,Event5,Label`
+
+Labeling logic for online data collection:
+- label `1` if `anomaly_probability >= decision_threshold`
+- label `0` otherwise
+
+Retraining triggers:
+- new sequences >= `retrain_threshold` (default 500)
+- or retraining interval reached (default 600 seconds / 10 minutes) with pending new rows
+
+Retraining actions:
+- combine original training data and online dataset
+- retrain LSTM model on expanded data
+- tune threshold again
+- overwrite model + encoder artifacts
+- update `config.json`
+
+Retraining logs include:
+- `New sequences collected: ...`
+- `Triggering model retraining...`
+- `Model retrained successfully`
+- `Updated model saved`
+
+## 9. Input and Output Format
 
 ### Expected Event Sequence Input
 - Exactly 5 EventIds for direct predictor calls (`sequence_length` from config).
@@ -191,7 +238,7 @@ Web app capabilities:
 - `root_cause_explanation`
 - `unknown_event_ids`
 
-## 9. Common Issues and Fixes
+## 10. Common Issues and Fixes
 
 ### `config.json not found`
 Run training first:
@@ -209,7 +256,7 @@ Event IDs not seen during training are flagged in `unknown_event_ids`.
 ### Streamlit command missing
 Use `python -m streamlit ...` or install dependencies again.
 
-## 10. Recommended Demo Flow (Viva)
+## 11. Recommended Demo Flow (Viva)
 
 1. Run `python -m project.train` once and show generated plots.
 1. Run manual CLI with a sample sequence and explain alert/root cause fields.

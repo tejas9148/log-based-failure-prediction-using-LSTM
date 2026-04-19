@@ -11,6 +11,8 @@ import joblib
 import numpy as np
 from tensorflow.keras.models import load_model
 
+from project.self_learning import append_sequence_record, maybe_trigger_retraining
+
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CONFIG_PATH = BASE_DIR / "config.json"
@@ -139,7 +141,7 @@ def _encode_sequence(event_sequence: List[str], label_encoder, sequence_length: 
     return np.array(encoded, dtype=np.int32).reshape(1, sequence_length), unknown
 
 
-def predict_failure(event_sequence: List[str]) -> Dict[str, object]:
+def predict_failure(event_sequence: List[str], enable_self_learning: bool = True) -> Dict[str, object]:
     """Predict anomaly probability and class for a given EventId sequence."""
     config = _load_config()
     threshold = float(config.get("decision_threshold", 0.5))
@@ -159,11 +161,19 @@ def predict_failure(event_sequence: List[str]) -> Dict[str, object]:
 
     probability = float(model.predict(x_input, verbose=0)[0][0])
     predicted_failure = bool(probability >= threshold or len(unknown) > 0)
+    predicted_label = int(probability >= threshold)
     alert_level = _alert_level(probability)
     root_cause_event, root_cause_explanation = _infer_root_cause_event(
         event_sequence=event_sequence,
         predicted_failure=predicted_failure,
     )
+
+    if enable_self_learning:
+        try:
+            append_sequence_record(event_sequence=event_sequence, label=predicted_label)
+            maybe_trigger_retraining()
+        except Exception as exc:
+            print(f"Self-learning skipped: {exc}")
 
     return {
         "input_sequence": event_sequence,

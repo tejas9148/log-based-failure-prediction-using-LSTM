@@ -27,6 +27,10 @@ def run_manual_cli() -> None:
     print(f"Anomaly Probability: {result['anomaly_probability']:.4f}")
     print(f"Decision Threshold: {result['decision_threshold']:.4f}")
     print(f"Predicted Class: {'Failure/Anomaly' if result['predicted_failure'] else 'Normal/Success'}")
+    print(f"Alert Level: {result['alert_level']}")
+    if result["root_cause_event"]:
+        print(f"Root Cause Event: {result['root_cause_event']}")
+        print(f"Explanation: {result['root_cause_explanation']}")
     if result["unknown_event_ids"]:
         print(f"Unknown EventIds: {result['unknown_event_ids']}")
 

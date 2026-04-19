@@ -16,6 +16,7 @@ from project.evaluation.analysis import build_results_analysis, save_results_ana
 from project.evaluation.visualizations import (
     plot_accuracy_curves,
     plot_confusion_matrix,
+    plot_event_transition_comparison,
     plot_loss_curves,
     plot_roc_curve,
 )
@@ -26,6 +27,7 @@ from project.preprocessing.data_preprocessing import encode_event_ids, generate_
 BASE_DIR = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = BASE_DIR.parent
 DEFAULT_DATASET_PATH = WORKSPACE_ROOT / "dataset" / "Event_traces.csv"
+DEFAULT_NPZ_PATH = WORKSPACE_ROOT / "dataset" / "HDFS.npz"
 SAVED_MODELS_DIR = BASE_DIR / "saved_models"
 PLOTS_DIR = BASE_DIR / "plots"
 CONFIG_PATH = BASE_DIR / "config.json"
@@ -208,11 +210,16 @@ def train_pipeline(
     roc_path = PLOTS_DIR / "roc_curve.png"
     acc_path = PLOTS_DIR / "training_validation_accuracy.png"
     loss_path = PLOTS_DIR / "training_validation_loss.png"
+    transitions_path = PLOTS_DIR / "event_transition_comparison.png"
 
     plot_confusion_matrix(cm=cm, output_path=confusion_path)
     roc_auc = plot_roc_curve(y_true=y_test, y_prob=y_prob, output_path=roc_path)
     plot_accuracy_curves(history=history, output_path=acc_path)
     plot_loss_curves(history=history, output_path=loss_path)
+    transition_meta = plot_event_transition_comparison(
+        npz_path=DEFAULT_NPZ_PATH,
+        output_path=transitions_path,
+    )
 
     analysis_text = build_results_analysis(
         cm=cm,
@@ -244,5 +251,7 @@ def train_pipeline(
         "roc_plot": str(roc_path),
         "accuracy_plot": str(acc_path),
         "loss_plot": str(loss_path),
+        "event_transition_plot": str(transitions_path),
+        "event_transition_meta": transition_meta,
         "analysis_path": str(ANALYSIS_PATH),
     }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 import json
 from pathlib import Path
 from typing import Dict, List
@@ -13,6 +14,7 @@ from tensorflow.keras.models import load_model
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CONFIG_PATH = BASE_DIR / "config.json"
+DATASET_NPZ_PATH = BASE_DIR.parent / "dataset" / "HDFS.npz"
 
 
 def _resolve_path(path_value: str) -> Path:
@@ -36,6 +38,87 @@ def _load_config() -> Dict[str, object]:
     if not CONFIG_PATH.exists():
         raise FileNotFoundError("config.json not found. Run training first with project/train.py")
     return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _load_event_failure_stats() -> Dict[str, Dict[str, float]]:
+    """Build per-event normal/failure frequencies from the HDFS NPZ traces."""
+    if not DATASET_NPZ_PATH.exists():
+        return {}
+
+    payload = np.load(DATASET_NPZ_PATH, allow_pickle=True)
+    traces = payload["x_data"]
+    labels = payload["y_data"]
+
+    stats: Dict[str, Dict[str, float]] = {}
+    for trace, label in zip(traces, labels):
+        target_key = "failure_count" if int(label) == 1 else "normal_count"
+        for event_id in trace:
+            key = str(event_id)
+            if key not in stats:
+                stats[key] = {
+                    "failure_count": 0.0,
+                    "normal_count": 0.0,
+                    "failure_ratio": 0.0,
+                }
+            stats[key][target_key] += 1.0
+
+    for values in stats.values():
+        values["failure_ratio"] = values["failure_count"] / (values["normal_count"] + 1.0)
+
+    return stats
+
+
+def _alert_level(probability: float) -> str:
+    """Map anomaly probability to severity level for monitoring-style output."""
+    if probability < 0.40:
+        return "NORMAL"
+    if probability <= 0.70:
+        return "WARNING"
+    return "CRITICAL FAILURE"
+
+
+def _infer_root_cause_event(event_sequence: List[str], predicted_failure: bool) -> tuple[str | None, str]:
+    """Infer most suspicious event in a sequence using failure-frequency heuristic."""
+    if not predicted_failure:
+        return None, "No root cause event for normal predictions."
+
+    stats = _load_event_failure_stats()
+    if not stats:
+        return None, "Root cause statistics unavailable because dataset traces could not be loaded."
+
+    counts_in_sequence: Dict[str, int] = {}
+    for event_id in event_sequence:
+        counts_in_sequence[event_id] = counts_in_sequence.get(event_id, 0) + 1
+
+    best_event = None
+    best_score = -1.0
+    best_failure_count = 0.0
+    best_ratio = 0.0
+
+    for event_id, count in counts_in_sequence.items():
+        event_stats = stats.get(event_id)
+        if event_stats is None:
+            continue
+
+        ratio = float(event_stats["failure_ratio"])
+        failure_count = float(event_stats["failure_count"])
+        score = ratio * float(count)
+
+        if score > best_score or (score == best_score and failure_count > best_failure_count):
+            best_event = event_id
+            best_score = score
+            best_failure_count = failure_count
+            best_ratio = ratio
+
+    if best_event is None:
+        return None, "No known event in this sequence has historical failure statistics."
+
+    explanation = (
+        f"Event {best_event} shows elevated failure association "
+        f"(failure_ratio={best_ratio:.2f}) in historical traces."
+    )
+    return best_event, explanation
 
 
 def _encode_sequence(event_sequence: List[str], label_encoder, sequence_length: int):
@@ -76,11 +159,19 @@ def predict_failure(event_sequence: List[str]) -> Dict[str, object]:
 
     probability = float(model.predict(x_input, verbose=0)[0][0])
     predicted_failure = bool(probability >= threshold or len(unknown) > 0)
+    alert_level = _alert_level(probability)
+    root_cause_event, root_cause_explanation = _infer_root_cause_event(
+        event_sequence=event_sequence,
+        predicted_failure=predicted_failure,
+    )
 
     return {
         "input_sequence": event_sequence,
         "anomaly_probability": probability,
         "decision_threshold": threshold,
         "predicted_failure": predicted_failure,
+        "alert_level": alert_level,
+        "root_cause_event": root_cause_event,
+        "root_cause_explanation": root_cause_explanation,
         "unknown_event_ids": unknown,
     }

@@ -28,6 +28,8 @@ def main() -> None:
     print(f"ROC Curve Plot: {results['roc_plot']}")
     print(f"Train/Val Accuracy Plot: {results['accuracy_plot']}")
     print(f"Train/Val Loss Plot: {results['loss_plot']}")
+    print(f"Event Transition Plot: {results['event_transition_plot']}")
+    print(f"Event Transition Stats: {results['event_transition_meta']}")
     print(f"Results Analysis: {results['analysis_path']}")
 
 

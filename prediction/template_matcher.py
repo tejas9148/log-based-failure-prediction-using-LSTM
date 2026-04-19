@@ -6,6 +6,7 @@ import csv
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -64,3 +65,8 @@ class TemplateMatcher:
 
 def parse_logs(raw_text: str) -> list[str]:
     return [line.strip() for line in raw_text.splitlines() if line.strip()]
+
+
+def find_event_line_numbers(mapping_rows: list[dict[str, Any]], event_id: str) -> list[int]:
+    """Return all original input line numbers that map to the target EventId."""
+    return [int(row["line_no"]) for row in mapping_rows if str(row.get("event_id")) == event_id]

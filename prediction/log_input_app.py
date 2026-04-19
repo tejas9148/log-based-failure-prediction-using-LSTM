@@ -177,6 +177,10 @@ def run_app() -> None:
         result_box.insert(END, f"Anomaly Probability: {prediction['anomaly_probability']:.4f}\n")
         result_box.insert(END, f"Decision Threshold: {prediction['decision_threshold']:.4f}\n")
         result_box.insert(END, f"Final Prediction: {decision}\n")
+        result_box.insert(END, f"Alert Level: {prediction['alert_level']}\\n")
+        if prediction["root_cause_event"]:
+            result_box.insert(END, f"Root Cause Event: {prediction['root_cause_event']}\\n")
+            result_box.insert(END, f"Root Cause Explanation: {prediction['root_cause_explanation']}\\n")
         if prediction["unknown_event_ids"]:
             result_box.insert(END, f"Unknown EventIds in Sequence: {prediction['unknown_event_ids']}\n")
 

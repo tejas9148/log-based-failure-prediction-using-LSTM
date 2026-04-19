@@ -28,7 +28,14 @@ if st.button("Predict"):
 
         st.metric("Anomaly Probability", f"{probability:.4f}")
         st.metric("Decision Threshold", f"{threshold:.4f}")
+        st.metric("Alert Level", result["alert_level"])
         st.subheader(f"Final Prediction: {prediction}")
+
+        if result["root_cause_event"]:
+            st.info(
+                f"Root Cause Event: {result['root_cause_event']}\\n\\n"
+                f"{result['root_cause_explanation']}"
+            )
 
         if result["unknown_event_ids"]:
             st.warning(f"Unknown EventIds detected: {result['unknown_event_ids']}")

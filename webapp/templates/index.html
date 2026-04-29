@@ -7,7 +7,19 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <main class="shell">
+  <div class="layout">
+    <aside class="sidebar">
+      <h3>Navigation</h3>
+      <nav>
+        <ul>
+          <li><a href="/">← Home</a></li>
+          <li><a href="/manual">Manual Prediction</a></li>
+          <li><a href="/realtime">Real-Time Monitoring</a></li>
+          <li><a href="/dashboard">Dashboard</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <main class="shell">
     <section class="hero">
       <div>
         <p class="eyebrow">Log Failure Prediction using LSTM</p>
@@ -85,6 +97,12 @@
         <div class="unknown-box">
           <h3>Unknown EventIds</h3>
           <p>{{ prediction_data.unknown_event_ids }}</p>
+        </div>
+        {% endif %}
+        {% if prediction_data.unknown_event_warning %}
+        <div class="unknown-box">
+          <h3>Input Warning</h3>
+          <p>{{ prediction_data.unknown_event_warning }}</p>
         </div>
         {% endif %}
       </article>

@@ -33,6 +33,8 @@ def run_manual_cli() -> None:
         print(f"Explanation: {result['root_cause_explanation']}")
     if result["unknown_event_ids"]:
         print(f"Unknown EventIds: {result['unknown_event_ids']}")
+    if result.get("unknown_event_warning"):
+        print(f"Warning: {result['unknown_event_warning']}")
 
 
 if __name__ == "__main__":

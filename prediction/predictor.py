@@ -11,6 +11,7 @@ import joblib
 import numpy as np
 from tensorflow.keras.models import load_model
 
+from project.model.lstm_architecture import AttentionPooling
 from project.self_learning import append_sequence_record, maybe_trigger_retraining
 
 
@@ -141,7 +142,7 @@ def _encode_sequence(event_sequence: List[str], label_encoder, sequence_length: 
     return np.array(encoded, dtype=np.int32).reshape(1, sequence_length), unknown
 
 
-def predict_failure(event_sequence: List[str], enable_self_learning: bool = True) -> Dict[str, object]:
+def predict_failure(event_sequence: List[str], enable_self_learning: bool = False) -> Dict[str, object]:
     """Predict anomaly probability and class for a given EventId sequence."""
     config = _load_config()
     threshold = float(config.get("decision_threshold", 0.5))
@@ -150,7 +151,7 @@ def predict_failure(event_sequence: List[str], enable_self_learning: bool = True
     model_path = _resolve_path(str(config["model_path"]))
     encoder_path = _resolve_path(str(config["encoder_path"]))
 
-    model = load_model(model_path)
+    model = load_model(model_path, custom_objects={"AttentionPooling": AttentionPooling})
     label_encoder = joblib.load(encoder_path)
 
     x_input, unknown = _encode_sequence(
@@ -160,7 +161,7 @@ def predict_failure(event_sequence: List[str], enable_self_learning: bool = True
     )
 
     probability = float(model.predict(x_input, verbose=0)[0][0])
-    predicted_failure = bool(probability >= threshold or len(unknown) > 0)
+    predicted_failure = bool(probability >= threshold)
     predicted_label = int(probability >= threshold)
     alert_level = _alert_level(probability)
     root_cause_event, root_cause_explanation = _infer_root_cause_event(
@@ -184,4 +185,10 @@ def predict_failure(event_sequence: List[str], enable_self_learning: bool = True
         "root_cause_event": root_cause_event,
         "root_cause_explanation": root_cause_explanation,
         "unknown_event_ids": unknown,
+        "unknown_event_warning": (
+            "Some event IDs were unseen during training and were encoded as 0. "
+            "Prediction still follows the model probability threshold."
+            if unknown
+            else None
+        ),
     }

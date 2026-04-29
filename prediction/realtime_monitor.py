@@ -57,7 +57,7 @@ def monitor_log_file(log_file: Path, poll_seconds: float = 1.0, start_from_end: 
                 continue
 
             sequence = list(window)
-            result = predict_failure(sequence, enable_self_learning=True)
+            result = predict_failure(sequence, enable_self_learning=False)
             status = "FAILURE/ANOMALY" if result["predicted_failure"] else "NORMAL/SUCCESS"
             print(
                 f"Sequence={sequence} | Prob={result['anomaly_probability']:.4f} "

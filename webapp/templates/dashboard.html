@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Log Failure Prediction</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h3>Navigation</h3>
+      <nav>
+        <ul>
+          <li><a href="/">← Home</a></li>
+          <li><a href="/manual">Manual Prediction</a></li>
+          <li><a href="/realtime">Real-Time Monitoring</a></li>
+          <li><a href="/dashboard">Dashboard</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="shell">
+      <section class="panel">
+        <h2>Model Performance & Real-Time Stats</h2>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+          <div style="flex:1; min-width:200px; padding:12px; background:rgba(15,23,42,0.45); border-radius:12px;">
+            <h3>Total Logs</h3>
+            <div id="totalLogs">-</div>
+          </div>
+          <div style="flex:1; min-width:200px; padding:12px; background:rgba(15,23,42,0.45); border-radius:12px;">
+            <h3>Anomalies</h3>
+            <div id="totalAnomalies">-</div>
+          </div>
+          <div style="flex:1; min-width:200px; padding:12px; background:rgba(15,23,42,0.45); border-radius:12px;">
+            <h3>Anomaly %</h3>
+            <div id="anomalyPct">-</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
+          <div class="panel">
+            <h3>Anomaly Probability Over Time</h3>
+            <canvas id="probChart"></canvas>
+          </div>
+
+          <div class="panel">
+            <h3>Event Frequency</h3>
+            <canvas id="freqChart"></canvas>
+          </div>
+        </div>
+
+        {% if transition_plot %}
+        <section style="margin-top:18px;">
+          <h3>Event Transition Patterns</h3>
+          <img src="{{ url_for('static', filename=transition_plot) }}" style="width:100%; border-radius:12px;">
+        </section>
+        {% endif %}
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const probCtx = document.getElementById('probChart').getContext('2d');
+    const freqCtx = document.getElementById('freqChart').getContext('2d');
+    let probChart = new Chart(probCtx, {type:'line', data:{labels:[], datasets:[{label:'Anomaly Probability', data:[], borderColor:'#f87171', backgroundColor:'rgba(248,113,113,0.12)'}]}});
+    let freqChart = new Chart(freqCtx, {type:'bar', data:{labels:[], datasets:[{label:'Count', data:[], backgroundColor:'#34d399'}]}});
+
+    async function refresh() {
+      const resp = await fetch('/dashboard_data');
+      const data = await resp.json();
+      document.getElementById('totalLogs').innerText = data.processed;
+      document.getElementById('totalAnomalies').innerText = data.anomalies;
+      document.getElementById('anomalyPct').innerText = data.anomaly_percentage.toFixed(2) + '%';
+
+      const probs = data.probabilities || [];
+      probChart.data.labels = probs.map((_, i) => i+1);
+      probChart.data.datasets[0].data = probs;
+      probChart.update();
+
+      const events = data.event_counts || {};
+      const labels = Object.keys(events).slice(0,40);
+      const vals = labels.map(k => events[k]);
+      freqChart.data.labels = labels;
+      freqChart.data.datasets[0].data = vals;
+      freqChart.update();
+    }
+
+    setInterval(refresh, 2000);
+    refresh();
+  </script>
+</body>
+</html>

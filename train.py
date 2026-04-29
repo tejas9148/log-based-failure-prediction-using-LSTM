@@ -6,7 +6,14 @@ from project.training.trainer import train_pipeline
 
 
 def main() -> None:
-    results = train_pipeline()
+    results = train_pipeline(
+        sequence_length=8,
+        balanced_subset=False,
+        max_records=10000,
+        oversample_training=False,
+        epochs=3,
+        use_class_weight=False,
+    )
 
     print("Training complete")
     print(f"Dataset: {results['dataset_path']}")

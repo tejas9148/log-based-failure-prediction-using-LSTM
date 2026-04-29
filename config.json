@@ -1,8 +1,17 @@
 {
   "dataset_type": "HDFS_Event_traces",
-  "sequence_length": 5,
+  "sequence_length": 8,
   "step_size": 1,
-  "decision_threshold": 0.44551998376846313,
+  "decision_threshold": 0.6526403427124023,
   "model_path": "C:\\Users\\tejas\\Documents\\minorproject 6sem\\minorproject\\log_failure_prediction\\project\\saved_models\\lstm_failure_predictor.keras",
-  "encoder_path": "C:\\Users\\tejas\\Documents\\minorproject 6sem\\minorproject\\log_failure_prediction\\project\\saved_models\\label_encoder.joblib"
+  "encoder_path": "C:\\Users\\tejas\\Documents\\minorproject 6sem\\minorproject\\log_failure_prediction\\project\\saved_models\\label_encoder.joblib",
+  "self_learning": {
+    "enabled": true,
+    "online_dataset_path": "C:\\Users\\tejas\\Documents\\minorproject 6sem\\minorproject\\log_failure_prediction\\project\\online_dataset.csv",
+    "state_path": "C:\\Users\\tejas\\Documents\\minorproject 6sem\\minorproject\\log_failure_prediction\\project\\saved_models\\self_learning_state.json",
+    "retrain_threshold": 500,
+    "retrain_interval_seconds": 600,
+    "epochs": 3,
+    "batch_size": 64
+  }
 }

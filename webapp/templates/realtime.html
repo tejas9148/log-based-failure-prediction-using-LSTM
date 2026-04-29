@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Monitoring - Log Failure Prediction</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h3>Navigation</h3>
+      <nav>
+        <ul>
+          <li><a href="/">← Home</a></li>
+          <li><a href="/manual">Manual Prediction</a></li>
+          <li><a href="/realtime">Real-Time Monitoring</a></li>
+          <li><a href="/dashboard">Dashboard</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="shell">
+      <section class="panel">
+        <h2>Real-Time Log Streaming</h2>
+        <p class="hint">Start streaming logs from a file and observe predictions as they are produced.</p>
+
+        <div class="controls">
+          <label for="log_file">Log file path (optional)</label>
+          <input id="log_file" type="text" placeholder="hdfs_logs.txt" style="width:100%; padding:8px; margin-bottom:12px;">
+          <div class="actions">
+            <button id="startBtn">Start Streaming</button>
+            <button id="stopBtn" class="secondary">Stop Streaming</button>
+          </div>
+        </div>
+
+        <div id="liveArea" style="margin-top:18px;">
+          <h3>Live Feed</h3>
+          <div id="status">Idle</div>
+          <div id="latest" style="margin-top:12px;"></div>
+          <div id="window" style="margin-top:12px;"></div>
+          <div id="prediction" style="margin-top:12px;"></div>
+        </div>
+
+        <div style="margin-top:18px;">
+          <h3>Recent Records</h3>
+          <div id="history"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    let polling = null;
+
+    async function startStream() {
+      const logFile = document.getElementById('log_file').value || 'dataset/HDFS.log';
+      const resp = await fetch('/start_stream', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({log_file: logFile})});
+      const data = await resp.json();
+      if (data.error) { alert('Error: ' + data.error); return; }
+      document.getElementById('status').innerText = 'Streaming...';
+      if (polling) clearInterval(polling);
+      polling = setInterval(step, 900);
+    }
+
+    async function stopStream() {
+      await fetch('/stop_stream', {method: 'POST'});
+      document.getElementById('status').innerText = 'Stopped';
+      if (polling) clearInterval(polling);
+    }
+
+    async function step() {
+      const resp = await fetch('/stream_step', {method: 'POST'});
+      const data = await resp.json();
+      if (!data.active) {
+        document.getElementById('status').innerText = data.message || 'Idle';
+        if (polling) { clearInterval(polling); polling = null; }
+        return;
+      }
+      const rec = data.record;
+      document.getElementById('latest').innerHTML = `<strong>Incoming:</strong> ${rec.log_line}`;
+      document.getElementById('window').innerHTML = `<strong>Window:</strong> ${rec.window.join(', ')}`;
+      if (rec.prediction) {
+        document.getElementById('prediction').innerHTML = `<strong>Prediction:</strong> ${rec.prediction} <br/><strong>Probability:</strong> ${rec.probability}`;
+      }
+
+      const history = document.getElementById('history');
+      const item = document.createElement('div');
+      item.style.padding = '8px';
+      item.style.borderBottom = '1px solid rgba(148,163,184,0.08)';
+      item.innerHTML = `<div><strong>${rec.event_id}</strong> — ${rec.log_line}</div><div style="font-size:0.9rem;color:#9fb0d0">${rec.window.join(', ')}</div>`;
+      history.prepend(item);
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startStream);
+    document.getElementById('stopBtn').addEventListener('click', stopStream);
+  </script>
+</body>
+</html>
